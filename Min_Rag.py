@@ -171,38 +171,39 @@ if len(retrieved_docs) == 0:
     answer, problems, score, is_valid = handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json)
     sys.exit(0)
 
-
+#run call_model to generate an answer based on the retrieved documents
 answer, temp_storage = call_model(answer, retrieved_docs, temp_storage)
 
-
+#run validate_output to evaluate the quality of the answer and generate a critique
 problems, score, is_valid = validate_output(problems, score, is_valid)
 
-
-print(t.toc())  # Stop the timer and print the elapsed time
-
-print("\nQ: {}".format(question))
-print(f"\nA: {answer}\n")
-print("Citations:")
-
-for r in retrieved_docs:
-    doc_text = r['doc']['txt']
-    if len(doc_text) > 80:
-        doc_text = doc_text[:80] + "..."
-    print("  [{}] (score: {:.3f}) {}".format(r['doc']['id'], r['score'], doc_text))
-
-if is_valid:
-    print("\nCritique: OK (confidence: {:.2f})".format(score))
-else:
-    print(f"\nCritique: ISSUES (confidence: {score:.2f})")
-
-if len(problems) > 0:
-    print("Problems: %s" % ', '.join(problems))
-
-result = {
-    "answer": answer,
-    "citations": retrieved_docs,
-    "critique": {"ok": is_valid, "score": score, "problems": problems}
-}
-
+#setup print function to display the question, answer, citations, and critique
 if use_json:
+    result = {
+        "answer": answer,
+        "citations": retrieved_docs,
+        "critique": {"ok": is_valid, "score": score, "problems": problems}
+    }
+    
     print(json.dumps(result, indent=2))
+
+else:
+    print("\nQ: {}".format(question))
+    print(f"\nA: {answer}\n")
+    print("Citations:")
+
+    for r in retrieved_docs:
+        doc_text = r['doc']['txt']
+        if len(doc_text) > 80:
+            doc_text = doc_text[:80] + "..."
+        print("  [{}] (score: {:.3f}) {}".format(r['doc']['id'], r['score'], doc_text))
+
+    if is_valid:
+        print("\nCritique: OK (confidence: {:.2f})".format(score))
+    else:
+        print(f"\nCritique: ISSUES (confidence: {score:.2f})")
+
+    if len(problems) > 0:
+        print("Problems: %s" % ', '.join(problems))
+
+
