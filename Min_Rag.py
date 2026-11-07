@@ -118,8 +118,6 @@ score = 1.0
 is_valid = False
 temp_storage = {}
 
-t.toc()
-
 if len(sys.argv) < 2:
     print("usage: python minimal-rag.py <question> [-k NUM] [--json]")
     print("example: python minimal-rag.py 'What is RAG?' -k 2 --json")
