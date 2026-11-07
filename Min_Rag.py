@@ -32,6 +32,24 @@ docs = [
     {"id": "5", "txt": "Vector databases store data as high-dimensional vectors and enable efficient similarity search. They are essential for modern AI applications, particularly in semantic search and retrieval systems. Common examples include Pinecone, Weaviate, and Chroma."}
 ]
 
+
+def handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json):
+    answer = "idk"
+    problems.append("no docs")
+    score = score * 0.4
+    is_valid = False
+
+    print("\nQ: {}".format(question))
+    print(f"\nA: {answer}\n")
+    print("Citations: None")
+    print("\nCritique: ISSUES (confidence: {:.2f})".format(score))
+    print("Problems: %s" % ', '.join(problems))
+    if use_json:
+        print(json.dumps({"answer": answer, "citations": retrieved_docs, "critique": {"ok": is_valid, "score": score, "problems": problems}}, indent=2))
+
+    return answer, problems, score, is_valid
+
+
 def get_data(retrieved_docs, temp_storage):
 
     vectorizer = TfidfVectorizer()
@@ -114,14 +132,6 @@ except:
     pass
 
 
-
-#retrieved_docs = []
-answer = ""
-problems = []
-score = 1.0
-is_valid = False
-temp_storage = {}
-
 #parse command line arguments
 if len(sys.argv) < 2:
     print("usage: python minimal-rag.py <question> [-k NUM] [--json]")
@@ -143,27 +153,22 @@ while i < len(sys.argv):
     else:
         i += 1
 
+
 retrieved_docs = []
 answer = ""
 problems = []
 score = 1.0
+temp_storage = {}
 temp_storage["question"] = question
+is_valid = False
 
+
+#run get_data to retrieve relevant documents based on the question
 retrieved_docs, temp_storage = get_data(retrieved_docs, temp_storage)
 
 
 if len(retrieved_docs) == 0:
-    answer = "idk"
-    problems.append("no docs")
-    score = score * 0.4
-    is_valid = False
-    print("\nQ: {}".format(question))
-    print(f"\nA: {answer}\n")
-    print("Citations: None")
-    print("\nCritique: ISSUES (confidence: {:.2f})".format(score))
-    print("Problems: %s" % ', '.join(problems))
-    if use_json:
-        print(json.dumps({"answer": answer, "citations": retrieved_docs, "critique": {"ok": is_valid, "score": score, "problems": problems}}, indent=2))
+    answer, problems, score, is_valid = handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json)
     sys.exit(0)
 
 
