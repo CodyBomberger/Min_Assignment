@@ -129,6 +129,17 @@ def validate_output(answer, problems, score, is_valid, retrieved_docs):
 
 
 #load gpt2 model
+doSample = True
+#option to constain model output
+constrain_output = False
+if constrain_output:
+    import torch
+    import numpy as np
+    # Lock down random seeds for absolute consistency
+    np.random.seed(42)
+    torch.manual_seed(42)
+    doSample = False
+
 try:
     print("loading model...")
     llm = pipeline("text-generation", model="gpt2", max_new_tokens=256)
