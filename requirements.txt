@@ -40,6 +40,7 @@ nvidia-nvtx==13.2.86
 packaging==26.3
 pipeline==0.1.0
 Pygments==2.21.0
+pytictoc==1.5.3
 PyYAML==6.0.3
 regex==2026.9.29
 rich==15.0.0
