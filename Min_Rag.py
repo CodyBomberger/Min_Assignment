@@ -32,8 +32,11 @@ docs = [
     {"id": "5", "txt": "Vector databases store data as high-dimensional vectors and enable efficient similarity search. They are essential for modern AI applications, particularly in semantic search and retrieval systems. Common examples include Pinecone, Weaviate, and Chroma."}
 ]
 
-def get_data():
-    global retrieved_docs, temp_storage
+def get_data(retrieved_docs, temp_storage):
+
+    vectorizer = TfidfVectorizer()
+    vectors = vectorizer.fit_transform([x["txt"] for x in docs])
+
     query_vec = vectorizer.transform([question])
     similarities = cosine_similarity(query_vec, vectors)[0]
     indices = np.argsort(similarities)[-k:][::-1]
@@ -43,10 +46,11 @@ def get_data():
         if similarities[i] > 0:
             retrieved_docs.append({"doc": docs[i], "score": float(similarities[i])})
             if len(retrieved_docs) >= k:
-                break
+                return retrieved_docs, temp_storage
 
-def call_model():
-    global answer, temp_storage
+    return retrieved_docs, temp_storage
+
+def call_model(answer, retrieved_docs, temp_storage):
     ctx = ""
     counter = 0
     for r in retrieved_docs:
@@ -57,15 +61,16 @@ def call_model():
     prompt = "Context:\n{}\nQuestion: {}\n\nAnswer the question based only on the context above. Cite sources using [1], [2], etc. Be concise.\n\nAnswer:".format(ctx, temp_storage['question'])
     output = llm(prompt)
     answer = output[0]['generated_text'].split("Answer:")[-1].strip()
-
+    print(f"line 64 Model output: {answer}")
     if answer == "":
         answer = "idk"
 
+    return answer, temp_storage
 
-def validate_output():
-    global problems, score, is_valid
-    problems = []
-    score = 1.0
+
+def validate_output(problems, score, is_valid):
+    #problems = []
+    #score = 1.0
 
     if "idk" in answer.lower():
         problems.append("no info")
@@ -76,7 +81,6 @@ def validate_output():
         score = score * 0.3
 
     refs = re.findall(r'\[(\d+)\]', answer)
-
     if len(retrieved_docs) > 0:
         if len(refs) == 0:
             problems.append("no refs")
@@ -99,6 +103,7 @@ def validate_output():
     else:
         is_valid = False
 
+    return problems, score, is_valid
 
 #load gpt2 model
 try:
@@ -110,16 +115,14 @@ except:
 
 
 
-vectorizer = TfidfVectorizer()
-vectors = vectorizer.fit_transform([x["txt"] for x in docs])
-
-retrieved_docs = []
+#retrieved_docs = []
 answer = ""
 problems = []
 score = 1.0
 is_valid = False
 temp_storage = {}
 
+#parse command line arguments
 if len(sys.argv) < 2:
     print("usage: python minimal-rag.py <question> [-k NUM] [--json]")
     print("example: python minimal-rag.py 'What is RAG?' -k 2 --json")
@@ -146,7 +149,7 @@ problems = []
 score = 1.0
 temp_storage["question"] = question
 
-get_data()
+retrieved_docs, temp_storage = get_data(retrieved_docs, temp_storage)
 
 
 if len(retrieved_docs) == 0:
@@ -164,10 +167,10 @@ if len(retrieved_docs) == 0:
     sys.exit(0)
 
 
-call_model()
+answer, temp_storage = call_model(answer, retrieved_docs, temp_storage)
 
 
-validate_output()
+problems, score, is_valid = validate_output(problems, score, is_valid)
 
 
 print(t.toc())  # Stop the timer and print the elapsed time
