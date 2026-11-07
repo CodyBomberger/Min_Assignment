@@ -1,5 +1,3 @@
-
-
 """
 This script implements a minimal Retrieval-Augmented Generation (RAG) pipeline. It retrieves relevant documents 
 from a predefined knowledge base using TF-IDF vectorization and cosine similarity, then generates a contextual 
@@ -12,8 +10,6 @@ from the command line with options to specify the number of documents to retriev
 from pytictoc import TicToc
 t = TicToc()
 t.tic()
-
-# minimal rag
 
 import sys
 import numpy as np
@@ -32,8 +28,14 @@ docs = [
     {"id": "5", "txt": "Vector databases store data as high-dimensional vectors and enable efficient similarity search. They are essential for modern AI applications, particularly in semantic search and retrieval systems. Common examples include Pinecone, Weaviate, and Chroma."}
 ]
 
+#handle exit to print total execution time
+def sys_exit_handler(n):
+    t.toc("Total execution time")
+    sys.exit(n)
 
-def handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json):
+
+#hanles the case when no documents are retrieved for the given question
+def handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json, is_valid):
     answer = "idk"
     problems.append("no docs")
     score = score * 0.4
@@ -68,6 +70,7 @@ def get_data(retrieved_docs, temp_storage):
 
     return retrieved_docs, temp_storage
 
+
 def call_model(answer, retrieved_docs, temp_storage):
     ctx = ""
     counter = 0
@@ -86,9 +89,7 @@ def call_model(answer, retrieved_docs, temp_storage):
     return answer, temp_storage
 
 
-def validate_output(problems, score, is_valid):
-    #problems = []
-    #score = 1.0
+def validate_output(answer, problems, score, is_valid):
 
     if "idk" in answer.lower():
         problems.append("no info")
@@ -123,6 +124,7 @@ def validate_output(problems, score, is_valid):
 
     return problems, score, is_valid
 
+
 #load gpt2 model
 try:
     print("loading model...")
@@ -136,7 +138,7 @@ except:
 if len(sys.argv) < 2:
     print("usage: python minimal-rag.py <question> [-k NUM] [--json]")
     print("example: python minimal-rag.py 'What is RAG?' -k 2 --json")
-    sys.exit(1)
+    sys_exit_handler(1)
 
 question = sys.argv[1]
 k = 3
@@ -168,14 +170,15 @@ retrieved_docs, temp_storage = get_data(retrieved_docs, temp_storage)
 
 
 if len(retrieved_docs) == 0:
-    answer, problems, score, is_valid = handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json)
-    sys.exit(0)
+    answer, problems, score, is_valid = handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json, is_valid)
+    sys_exit_handler(0)
+
 
 #run call_model to generate an answer based on the retrieved documents
 answer, temp_storage = call_model(answer, retrieved_docs, temp_storage)
 
 #run validate_output to evaluate the quality of the answer and generate a critique
-problems, score, is_valid = validate_output(problems, score, is_valid)
+problems, score, is_valid = validate_output(answer, problems, score, is_valid)
 
 #setup print function to display the question, answer, citations, and critique
 if use_json:
@@ -206,4 +209,4 @@ else:
     if len(problems) > 0:
         print("Problems: %s" % ', '.join(problems))
 
-
+sys_exit_handler(0)
