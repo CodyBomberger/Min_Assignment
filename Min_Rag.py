@@ -142,7 +142,7 @@ if constrain_output:
 
 try:
     print("loading model...")
-    llm = pipeline("text-generation", model="gpt2", max_new_tokens=256)
+    llm = pipeline("text-generation", model="gpt2", max_new_tokens=256, do_sample=doSample)
     print("model loaded")
 except:
     print("Error loading model")
@@ -155,20 +155,26 @@ if len(sys.argv) < 2:
     print("example: python minimal-rag.py 'What is RAG?' -k 2 --json")
     sys_exit_handler(1)
 
+#default use k=3 and and not use json output unless specified
 question = sys.argv[1]
 k = 3
 use_json = False
 i = 2
-
-while i < len(sys.argv):
-    if sys.argv[i] == "-k":
-        k = int(sys.argv[i+1])
-        i += 2
-    elif sys.argv[i] == "--json":
-        use_json = True
-        i += 1
-    else:
-        i += 1
+if len(sys.argv) > 2:
+    while i < len(sys.argv):
+        if sys.argv[i] == "-k":
+            if len(sys.argv) > 3:
+                k = abs(int(sys.argv[i+1]))
+                i += 2
+            else:
+                #catch error if -k is specified but no number is provided default back to k=3
+                k = 3
+                i += 1
+        elif sys.argv[i] == "--json":
+            use_json = True
+            i += 1
+        else:
+            i += 1
 
 
 retrieved_docs = []
@@ -194,7 +200,7 @@ if len(retrieved_docs) == 0:
 answer, temp_storage = call_model(answer, retrieved_docs, temp_storage)
 
 #run validate_output to evaluate the quality of the answer and generate a critique
-problems, score, is_valid = validate_output(answer, problems, score, is_valid)
+problems, score, is_valid = validate_output(answer, problems, score, is_valid, retrieved_docs)
 
 #setup print function to display the question, answer, citations, and critique
 if use_json:
