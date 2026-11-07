@@ -8,6 +8,11 @@ response based on relevance, references, and length, providing a critique and co
 from the command line with options to specify the number of documents to retrieve and output format.
 """
 
+#start timer
+from pytictoc import TicToc
+t = TicToc()
+t.tic()
+
 # minimal rag
 
 import sys
@@ -18,56 +23,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import pipeline
 
-try:
-    print("loading model...")
-    llm = pipeline("text-generation", model="gpt2", max_new_tokens=256)
-    print("model loaded")
-except:
-    pass
-
-docs = [
-    {"id": "1", "txt": "Python is a high-level, interpreted programming language. It was created by Guido van Rossum and first released in 1991. Python emphasizes code readability with its notable use of significant whitespace."},
-    {"id": "2", "txt": "FastAPI is a modern, fast web framework for building APIs with Python 3.7+. It is based on standard Python type hints and provides automatic API documentation. FastAPI is one of the fastest Python frameworks available."},
-    {"id": "3", "txt": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience. It uses algorithms to parse data, learn from it, and make predictions or decisions without being explicitly programmed."},
-    {"id": "4", "txt": "RAG (Retrieval-Augmented Generation) combines information retrieval with text generation. It retrieves relevant documents from a knowledge base and uses them to generate informed, contextual answers. This approach improves accuracy and reduces hallucinations."},
-    {"id": "5", "txt": "Vector databases store data as high-dimensional vectors and enable efficient similarity search. They are essential for modern AI applications, particularly in semantic search and retrieval systems. Common examples include Pinecone, Weaviate, and Chroma."}
-]
-
-vectorizer = TfidfVectorizer()
-vectors = vectorizer.fit_transform([x["txt"] for x in docs])
-
-retrieved_docs = []
-answer = ""
-problems = []
-score = 1.0
-is_valid = False
-temp_storage = {}
-
-if len(sys.argv) < 2:
-    print("usage: python minimal-rag.py <question> [-k NUM] [--json]")
-    print("example: python minimal-rag.py 'What is RAG?' -k 2 --json")
-    sys.exit(1)
-
-question = sys.argv[1]
-k = 3
-use_json = False
-i = 2
-
-while i < len(sys.argv):
-    if sys.argv[i] == "-k":
-        k = int(sys.argv[i+1])
-        i += 2
-    elif sys.argv[i] == "--json":
-        use_json = True
-        i += 1
-    else:
-        i += 1
-
-retrieved_docs = []
-answer = ""
-problems = []
-score = 1.0
-temp_storage["question"] = question
 
 def get_data():
     global retrieved_docs, temp_storage
@@ -81,22 +36,6 @@ def get_data():
             retrieved_docs.append({"doc": docs[i], "score": float(similarities[i])})
             if len(retrieved_docs) >= k:
                 break
-
-get_data()
-
-if len(retrieved_docs) == 0:
-    answer = "idk"
-    problems.append("no docs")
-    score = score * 0.4
-    is_valid = False
-    print("\nQ: {}".format(question))
-    print(f"\nA: {answer}\n")
-    print("Citations: None")
-    print("\nCritique: ISSUES (confidence: {:.2f})".format(score))
-    print("Problems: %s" % ', '.join(problems))
-    if use_json:
-        print(json.dumps({"answer": answer, "citations": retrieved_docs, "critique": {"ok": is_valid, "score": score, "problems": problems}}, indent=2))
-    sys.exit(0)
 
 def call_model():
     global answer, temp_storage
@@ -114,7 +53,6 @@ def call_model():
     if answer == "":
         answer = "idk"
 
-call_model()
 
 def validate_output():
     global problems, score, is_valid
@@ -153,7 +91,86 @@ def validate_output():
     else:
         is_valid = False
 
+
+
+try:
+    print("loading model...")
+    llm = pipeline("text-generation", model="gpt2", max_new_tokens=256)
+    print("model loaded")
+except:
+    pass
+
+docs = [
+    {"id": "1", "txt": "Python is a high-level, interpreted programming language. It was created by Guido van Rossum and first released in 1991. Python emphasizes code readability with its notable use of significant whitespace."},
+    {"id": "2", "txt": "FastAPI is a modern, fast web framework for building APIs with Python 3.7+. It is based on standard Python type hints and provides automatic API documentation. FastAPI is one of the fastest Python frameworks available."},
+    {"id": "3", "txt": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience. It uses algorithms to parse data, learn from it, and make predictions or decisions without being explicitly programmed."},
+    {"id": "4", "txt": "RAG (Retrieval-Augmented Generation) combines information retrieval with text generation. It retrieves relevant documents from a knowledge base and uses them to generate informed, contextual answers. This approach improves accuracy and reduces hallucinations."},
+    {"id": "5", "txt": "Vector databases store data as high-dimensional vectors and enable efficient similarity search. They are essential for modern AI applications, particularly in semantic search and retrieval systems. Common examples include Pinecone, Weaviate, and Chroma."}
+]
+
+vectorizer = TfidfVectorizer()
+vectors = vectorizer.fit_transform([x["txt"] for x in docs])
+
+retrieved_docs = []
+answer = ""
+problems = []
+score = 1.0
+is_valid = False
+temp_storage = {}
+
+t.toc()
+
+if len(sys.argv) < 2:
+    print("usage: python minimal-rag.py <question> [-k NUM] [--json]")
+    print("example: python minimal-rag.py 'What is RAG?' -k 2 --json")
+    sys.exit(1)
+
+question = sys.argv[1]
+k = 3
+use_json = False
+i = 2
+
+while i < len(sys.argv):
+    if sys.argv[i] == "-k":
+        k = int(sys.argv[i+1])
+        i += 2
+    elif sys.argv[i] == "--json":
+        use_json = True
+        i += 1
+    else:
+        i += 1
+
+retrieved_docs = []
+answer = ""
+problems = []
+score = 1.0
+temp_storage["question"] = question
+
+get_data()
+
+
+if len(retrieved_docs) == 0:
+    answer = "idk"
+    problems.append("no docs")
+    score = score * 0.4
+    is_valid = False
+    print("\nQ: {}".format(question))
+    print(f"\nA: {answer}\n")
+    print("Citations: None")
+    print("\nCritique: ISSUES (confidence: {:.2f})".format(score))
+    print("Problems: %s" % ', '.join(problems))
+    if use_json:
+        print(json.dumps({"answer": answer, "citations": retrieved_docs, "critique": {"ok": is_valid, "score": score, "problems": problems}}, indent=2))
+    sys.exit(0)
+
+
+call_model()
+
+
 validate_output()
+
+
+print(t.toc())  # Stop the timer and print the elapsed time
 
 print("\nQ: {}".format(question))
 print(f"\nA: {answer}\n")
