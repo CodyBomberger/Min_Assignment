@@ -1,4 +1,6 @@
 """
+python 3.12.3
+
 This script implements a minimal Retrieval-Augmented Generation (RAG) pipeline. It retrieves relevant documents 
 from a predefined knowledge base using TF-IDF vectorization and cosine similarity, then generates a contextual 
 response to a user-provided question using a GPT-2 language model. The script evaluates the quality of the 
@@ -28,6 +30,7 @@ docs = [
     {"id": "5", "txt": "Vector databases store data as high-dimensional vectors and enable efficient similarity search. They are essential for modern AI applications, particularly in semantic search and retrieval systems. Common examples include Pinecone, Weaviate, and Chroma."}
 ]
 
+
 #handle exit to print total execution time
 def sys_exit_handler(n):
     t.toc("Total execution time")
@@ -53,11 +56,12 @@ def handle_no_retrieved_docs(question, retrieved_docs, problems, score, use_json
 
 
 def get_data(retrieved_docs, temp_storage):
+    k = temp_storage["k"]
 
     vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform([x["txt"] for x in docs])
 
-    query_vec = vectorizer.transform([question])
+    query_vec = vectorizer.transform([temp_storage["question"]])
     similarities = cosine_similarity(query_vec, vectors)[0]
     indices = np.argsort(similarities)[-k:][::-1]
     temp_storage["sims"] = similarities
@@ -82,14 +86,13 @@ def call_model(answer, retrieved_docs, temp_storage):
     prompt = "Context:\n{}\nQuestion: {}\n\nAnswer the question based only on the context above. Cite sources using [1], [2], etc. Be concise.\n\nAnswer:".format(ctx, temp_storage['question'])
     output = llm(prompt)
     answer = output[0]['generated_text'].split("Answer:")[-1].strip()
-    print(f"line 64 Model output: {answer}")
     if answer == "":
         answer = "idk"
 
     return answer, temp_storage
 
 
-def validate_output(answer, problems, score, is_valid):
+def validate_output(answer, problems, score, is_valid, retrieved_docs):
 
     if "idk" in answer.lower():
         problems.append("no info")
@@ -131,7 +134,8 @@ try:
     llm = pipeline("text-generation", model="gpt2", max_new_tokens=256)
     print("model loaded")
 except:
-    pass
+    print("Error loading model")
+    sys_exit_handler(1)
 
 
 #parse command line arguments
@@ -162,6 +166,7 @@ problems = []
 score = 1.0
 temp_storage = {}
 temp_storage["question"] = question
+temp_storage["k"] = k
 is_valid = False
 
 
